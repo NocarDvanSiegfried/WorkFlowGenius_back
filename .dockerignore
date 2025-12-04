@@ -17,4 +17,4 @@ README.md
 *.swp
 *.swo
 .DS_Store
-
+.env.prod

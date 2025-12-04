@@ -1,0 +1,19 @@
+[Unit]
+Description=WorkFlowGenius Backend Docker Compose
+Requires=docker.service
+After=docker.service network.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/workflowgenius/backend
+ExecStart=/bin/bash -c 'if command -v docker > /dev/null && docker compose version > /dev/null 2>&1; then docker compose -f docker-compose.prod.yml up -d; elif command -v docker-compose > /dev/null; then docker-compose -f docker-compose.prod.yml up -d; else echo "Error: docker compose not found"; exit 1; fi'
+ExecStop=/bin/bash -c 'if command -v docker > /dev/null && docker compose version > /dev/null 2>&1; then docker compose -f docker-compose.prod.yml down; elif command -v docker-compose > /dev/null; then docker-compose -f docker-compose.prod.yml down; fi'
+ExecReload=/bin/bash -c 'if command -v docker > /dev/null && docker compose version > /dev/null 2>&1; then docker compose -f docker-compose.prod.yml restart; elif command -v docker-compose > /dev/null; then docker-compose -f docker-compose.prod.yml restart; fi'
+TimeoutStartSec=0
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+

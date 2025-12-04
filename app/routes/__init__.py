@@ -4,9 +4,11 @@ from app.routes.tasks import tasks_bp
 from app.routes.users import users_bp
 from app.routes.dashboard import dashboard_bp
 from app.routes.health import health_bp
+from app.routes.main import main_bp
 
 def register_blueprints(app):
     """Регистрация всех Blueprints"""
+    app.register_blueprint(main_bp)
     app.register_blueprint(health_bp, url_prefix='/api')
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(tasks_bp, url_prefix='/api/tasks')

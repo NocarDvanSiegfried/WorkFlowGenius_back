@@ -8,6 +8,7 @@ from flask_jwt_extended import JWTManager
 from app.config import Config
 from app.database import db
 from app.routes import register_blueprints
+from flask_migrate import Migrate
 import os
 
 def create_app(config_class=Config):
@@ -17,6 +18,7 @@ def create_app(config_class=Config):
     
     # Инициализация расширений
     db.init_app(app)
+    migrate = Migrate(app, db) 
     jwt = JWTManager(app)
     CORS(app, origins=app.config['CORS_ORIGINS'])
     

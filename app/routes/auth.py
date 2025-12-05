@@ -45,7 +45,7 @@ def register():
     db.session.commit()
     
     # Создание токена
-    access_token = create_access_token(identity=user.id)
+    access_token = create_access_token(identity=str(user.id))
     
     return jsonify({
         'success': True,
@@ -85,7 +85,7 @@ def login():
         }), 401
     
     # Создание токена
-    access_token = create_access_token(identity=user.id)
+    access_token = create_access_token(identity=str(user.id))
     
     return jsonify({
         'success': True,

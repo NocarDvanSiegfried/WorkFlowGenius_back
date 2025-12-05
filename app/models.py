@@ -5,30 +5,28 @@ from app.database import db
 # ==================== ОСНОВНЫЕ МОДЕЛИ ====================
 
 class User(db.Model):
-    """Модель пользователя - РАСШИРЕННАЯ"""
     __tablename__ = 'users'
     
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(255), unique=True, nullable=False, index=True)
     name = db.Column(db.String(255), nullable=False)
-    position = db.Column(db.String(255))  # Должность (UI/UX Designer и т.д.)
+    position = db.Column(db.String(255))
     password_hash = db.Column(db.String(255), nullable=False)
-    role = db.Column(db.String(50), nullable=False, default='employee')  # manager, employee, admin
+    role = db.Column(db.String(50), nullable=False, default='employee')
     current_workload = db.Column(db.Integer, default=0)
     max_workload = db.Column(db.Integer, default=100)
-    satisfaction_score = db.Column(db.Integer, default=7)  # Удовлетворённость 1-10
-    efficiency_score = db.Column(db.Integer, default=8)    # Эффективность 1-10
-    monthly_hours = db.Column(db.Integer, default=160)     # Ср. кол-во рабочих часов
-    salary = db.Column(db.Integer)                         # Зарплата (в тысячах)
+    satisfaction_score = db.Column(db.Integer, default=7)
+    efficiency_score = db.Column(db.Integer, default=8)
+    monthly_hours = db.Column(db.Integer, default=160)
+    salary = db.Column(db.Integer)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    # Связи
+    # Связи (исправленные)
     skills = db.relationship('UserSkill', backref='user', lazy=True, cascade='all, delete-orphan')
     performance_records = db.relationship('PerformanceRecord', backref='user', lazy=True, cascade='all, delete-orphan')
-    created_tasks = db.relationship('Task', backref='creator', lazy=True, foreign_keys='Task.created_by', cascade='all, delete-orphan')
-    assignments = db.relationship('Assignment', backref='user', lazy=True, foreign_keys='Assignment.assigned_to')
-    teams = db.relationship('TeamMember', backref='user', lazy=True, cascade='all, delete-orphan')
+    created_tasks = db.relationship('Task', backref='creator', lazy=True, foreign_keys='Task.created_by')
+    assignments = db.relationship('Assignment', backref='assignee', lazy=True, foreign_keys='Assignment.assigned_to')
     recommendations = db.relationship('AIRecommendation', backref='user', lazy=True, foreign_keys='AIRecommendation.user_id')
     
     def to_dict(self):
@@ -45,7 +43,7 @@ class User(db.Model):
             'efficiency_score': self.efficiency_score,
             'monthly_hours': self.monthly_hours,
             'salary': self.salary,
-            'skills': [skill.skill_name for skill in self.skills],
+            'skills': [skill.skill_name for skill in self.skills] if self.skills else [],
             'created_at': self.created_at.isoformat() if self.created_at else None,
         }
 

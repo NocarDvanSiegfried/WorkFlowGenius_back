@@ -19,7 +19,7 @@ def assign_task_automatically(task_id, assigned_by):
         return None
     
     # Проверка: задача уже назначена?
-    existing_assignment = Assignment.query.filter_by(task_id=task_id, status='assigned').first()
+    existing_assignment = Assignment.query.filter_by(task_id=task_id, status='pending').first()
     if existing_assignment:
         return existing_assignment
     

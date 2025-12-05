@@ -208,3 +208,9 @@ def update_user_scores(user_id):
         'data': user.to_dict(),
         'message': 'Данные пользователя обновлены'
     }), 200
+@users_bp.route('/me', methods=['GET'])
+@jwt_required()
+def redirect_to_auth_me():
+    """Redirect с /users/me на /auth/me для совместимости"""
+    from flask import redirect
+    return redirect('/api/auth/me', code=302)

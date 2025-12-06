@@ -1,27 +1,23 @@
 from flask import Blueprint, jsonify
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from datetime import datetime
 from app.database import db
 from app.models import User, Task, Assignment
+from sqlalchemy import or_
 
 dashboard_bp = Blueprint('dashboard', __name__)
 
 @dashboard_bp.route('/manager', methods=['GET'])
-@jwt_required()
 def manager_dashboard():
     """Дашборд для менеджера"""
-    user_id = get_jwt_identity()
-    user = User.query.get_or_404(user_id)
-    
-    if user.role != 'manager':
-        return jsonify({
-            'success': False,
-            'message': 'Недостаточно прав'
-        }), 403
+    # Без авторизации - просто возвращаем данные
     
     # Статистика
     total_tasks = Task.query.count()
-    pending_tasks = Task.query.filter_by(status='pending').count()
-    in_progress_tasks = Task.query.filter_by(status='in_progress').count()
+    active_tasks = Task.query.filter(Task.status.in_(['assigned', 'in_progress'])).count()
+    overdue_tasks = Task.query.filter(
+        Task.deadline < datetime.utcnow(),
+        Task.status.in_(['assigned', 'in_progress'])
+    ).count()
     completed_tasks = Task.query.filter_by(status='completed').count()
     
     # Пользователи
@@ -33,33 +29,78 @@ def manager_dashboard():
     employees_list = User.query.filter_by(role='employee').all()
     avg_workload = sum(e.current_workload for e in employees_list) / len(employees_list) if employees_list else 0
     
+    # Получаем задачи с назначениями для отображения
+    tasks_with_assignments = db.session.query(Task, Assignment, User).outerjoin(
+        Assignment, Task.id == Assignment.task_id
+    ).outerjoin(
+        User, Assignment.assigned_to == User.id
+    ).filter(
+        or_(Task.status == 'assigned', Task.status == 'in_progress', Task.status == 'completed')
+    ).order_by(Task.created_at.desc()).limit(10).all()
+    
+    tasks_data = []
+    for task, assignment, user in tasks_with_assignments:
+        task_dict = task.to_dict()
+        if assignment and user:
+            task_dict['employee'] = user.name
+            task_dict['employeeEmail'] = user.email
+            task_dict['progress'] = assignment.workload_points or 0
+            task_dict['maxProgress'] = user.max_workload or 0
+        tasks_data.append(task_dict)
+    
+    # Загруженность сотрудников
+    employee_loads = []
+    for emp in employees_list:
+        employee_loads.append({
+            'name': emp.name,
+            'load': emp.current_workload,
+            'maxLoad': emp.max_workload
+        })
+    
+    # Рекомендации ИИ
+    from app.services.ai_recommendations_service import generate_recommendations
+    recommendations = generate_recommendations()
+    applied_recommendations = len([r for r in recommendations if r.get('applied', False)])
+    
     return jsonify({
         'success': True,
         'data': {
-            'tasks': {
+            'stats': {
                 'total': total_tasks,
-                'pending': pending_tasks,
-                'in_progress': in_progress_tasks,
+                'active': active_tasks,
+                'overdue': overdue_tasks,
                 'completed': completed_tasks
             },
-            'users': {
-                'total': total_users,
-                'employees': employees,
-                'managers': managers
-            },
-            'workload': {
-                'average': round(avg_workload, 2),
-                'employees': [e.to_dict() for e in employees_list]
+            'tasks': tasks_data,
+            'employeeLoads': employee_loads,
+            'aiAnalysis': {
+                'recommendations': len(recommendations),
+                'applied': applied_recommendations
             }
         }
     }), 200
 
 @dashboard_bp.route('/employee', methods=['GET'])
-@jwt_required()
 def employee_dashboard():
     """Дашборд для сотрудника"""
-    user_id = get_jwt_identity()
-    user = User.query.get_or_404(user_id)
+    # Без авторизации - берем первого сотрудника или возвращаем пустые данные
+    user = User.query.filter_by(role='employee').first()
+    if not user:
+        return jsonify({
+            'success': True,
+            'data': {
+                'user': None,
+                'tasks': {
+                    'total': 0,
+                    'pending': 0,
+                    'in_progress': 0,
+                    'completed': 0
+                },
+                'upcoming_deadlines': []
+            }
+        }), 200
+    
+    user_id = user.id
     
     # Мои задачи
     my_assignments = Assignment.query.filter_by(assigned_to=user_id).all()
